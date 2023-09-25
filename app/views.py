@@ -38,7 +38,7 @@ def user_create():
 
 @app.get("/user/<int:user_id>")
 def get_user_inf(user_id):
-    if models.User.check_user(user_id):
+    if models.User.is_valid_user_id(user_id):
         response = USERS[user_id].get_inf()
         return Response(
             json.dumps(response), status=http.HTTPStatus.OK, mimetype="application/json"
@@ -50,11 +50,11 @@ def get_user_inf(user_id):
 def create_folder(user_id):
     data = request.get_json()
     folder_name = data["folder_name"]
-    if models.User.check_user(user_id=user_id):
+    if models.User.is_valid_user_id(user_id):
         user = USERS[user_id]
         folder_id = len(user.folders)
-        folder = models.Folder(id=folder_id, name = folder_name)
-        folder.create_folder(user=user)
+        folder = models.Folder(folder_id, folder_name)
+        folder.create_folder(user)
         return Response(status=http.HTTPStatus.OK)
     return Response(http.HTTPStatus.BAD_REQUEST) 
 
@@ -62,10 +62,12 @@ def create_folder(user_id):
 def append_photo_to_the_folder(user_id, folder_id):
     data = request.get_json()
     path = data["path"]
-    if models.User.check_user(user_id=user_id) and models.User.check_folder(user=USERS[user_id], folder_id=folder_id):
+    title = data["title"]
+    if models.Folder.is_valid_folder_id(user_id,folder_id):
         user = USERS[user_id] 
-        photo_id = len(user.folders[folder_id]["images"])
-        photo = models.Photo(id=photo_id, path=path)
-        user.folders[folder_id]["images"][photo_id] = photo.data
+        folder = user.folders[folder_id]
+        photo_id = len(folder.data["images"])
+        photo = models.Photo(photo_id, path, title)
+        folder.data["images"][photo_id] = photo
         return Response(status=http.HTTPStatus.OK)
     return Response(status=http.HTTPStatus.BAD_REQUEST)

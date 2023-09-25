@@ -26,16 +26,20 @@ class User:
             "phone":self.phone,
             "email":self.email,
             "id":self.id,
-            "folders":self.folders
+            "folders":self.folders_data_to_json()
         }
         return inf
     
+    def folders_data_to_json(self):
+        dict_of_folders = {}
+        for folder_id in self.folders:
+            folder = self.folders[folder_id]
+            dict_of_folders[folder_id] = folder.photos_data_to_json()
+        return dict_of_folders
+
     @staticmethod
-    def check_user(user_id : int):
+    def is_valid_user_id(user_id : int):
         return isinstance(user_id, int) and user_id >= 0 and user_id < len(USERS)
-    @staticmethod
-    def check_folder(user, folder_id : int):
-        return isinstance(folder_id, int) and folder_id >= 0 and folder_id < len(user.folders)
     
 
 class Folder:
@@ -48,14 +52,30 @@ class Folder:
             }
     
     def create_folder(self, user: User):
-        user.folders[self.id] = self.data
+        user.folders[self.id] = self
+
+    @staticmethod
+    def is_valid_folder_id(user_id, folder_id):
+        return User.is_valid_user_id(user_id) and isinstance(folder_id, int) and folder_id >= 0 and folder_id < len(USERS[user_id].folders)
+
+    def photos_data_to_json(self):
+        data = self.data
+        for key in self.data["images"]:
+            photo = self.data["images"][key]
+            data["images"][photo.id] = photo.data
+        return data
+
 
 class Photo:
-    def __init__(self, id : int, path : str, comment : str = ''):
+    def __init__(self, id : int, path : str, title : str):
         self.id = id
         self.path = path
-        self.comment = comment
+        self.title = title
         self.data = {
-            "path": self.path,
-            "comment": self.comment
+            "title": self.title,
+            "path": self.path
         }
+    
+    @staticmethod
+    def is_valid_photo_id(folder, photo_id):
+        return folder.is_valid_folder_id and isinstance(photo_id, int) and photo_id >= 0 and photo_id < len(folder.data["images"])
