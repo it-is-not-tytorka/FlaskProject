@@ -159,12 +159,17 @@ class SharedFolder(Folder):
 
 
 class Photo:
-    def __init__(self, id: str, path: str, title: str):
+    def __init__(self, id: str, path: str, title: str, user_id: int):
         self.id = id
         self.path = path
         self.title = title
-        self.comments = []
-        self.data = {"title": self.title, "path": self.path, "comments": self.comments}
+        self.comments = {}
+        self.data = {
+            "title": self.title,
+            "user_id": user_id,
+            "path": self.path,
+            "comments": self.comments,
+        }
 
     @staticmethod
     def is_valid_photo_id(folder: Folder, photo_id: int):
@@ -176,20 +181,17 @@ class Photo:
             "user_id": user.id,
             "comment": comment,
             "date": today_date,
-            "comment_id": comment_id,
         }
-        self.comments.append(data)
+        self.comments[comment_id] = data
 
-    def is_comment_present(self, comment_id: str) -> bool:
-        return any(comment["comment_id"] == comment_id for comment in self.comments)
+    def is_valid_comment_id(self, comment_id: str) -> bool:
+        return comment_id in self.comments
 
     def delete_comment(self, comment_id: str):
-        for i in range(len(self.comments)):
-            if self.comments[i]["comment_id"] == comment_id:
-                self.comments.pop(i)
+        del self.comments[comment_id]
 
 
-class Editior:
+class Editor:
     @staticmethod
     def swap_two_elements_in_dict(
         first_el_id: int, second_el_id: int, old_dict: dict

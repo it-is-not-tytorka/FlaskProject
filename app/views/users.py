@@ -1,8 +1,9 @@
-from app import app, USERS, models  # TODO: maybe from models import User, Image etc?
+from app import app, USERS
+from app.models import User
 from flask import request, Response, url_for
 import json
 import matplotlib.pyplot as plt
-import http  # TODO: maybe from http import HTTPStatus
+from http import HTTPStatus
 
 
 @app.post("/user/create")
@@ -13,45 +14,69 @@ def user_create():
     phone = data["phone"]
     email = data["email"]
     id = len(USERS)
+
     # check if phone number and email are valid
-    if models.User.is_valid_phone(phone_numb=phone) and models.User.is_valid_email(
-        email=email
-    ):
-        # TODO: switch on: if models.User.is_unique_params(data, "first_name","last_name","phone","email"):
-        user = models.User(first_name, last_name, phone, email, id)
-        user_data = {
-            "first_name": user.first_name,
-            "last_name": user.last_name,
-            "phone": user.phone,
-            "email": user.email,
-            "id": user.id,
-            "folders": user.folders,
+    if User.is_valid_phone(phone_numb=phone) and User.is_valid_email(email=email):
+        if User.is_unique_params(data, "phone", "email"):
+            user = User(first_name, last_name, phone, email, id)
+            user_data = {
+                "first_name": user.first_name,
+                "last_name": user.last_name,
+                "phone": user.phone,
+                "email": user.email,
+                "id": user.id,
+                "folders": user.folders,
+            }
+            USERS.append(user)
+            return Response(
+                response=json.dumps(user_data),
+                status=HTTPStatus.CREATED,
+                content_type="application/json",
+            )
+
+        response_data = {
+            "error": "Data duplication conflict",
         }
-        USERS.append(user)
         return Response(
-            json.dumps(user_data),
-            status=http.HTTPStatus.CREATED,
-            mimetype="application/json",
+            response=json.dumps(response_data),
+            status=HTTPStatus.CONFLICT,
+            content_type="application/json",
         )
-    # TODO: switch on: return Response("Not unique user's data.", status=http.HTTPStatus.BAD_REQUEST)
+
+    response_data = {
+        "error": "Invalid user phone or email",
+    }
     return Response(
-        response="Not valid phone number or email.", status=http.HTTPStatus.BAD_REQUEST
+        response=json.dumps(response_data),
+        status=HTTPStatus.BAD_REQUEST,
+        content_type="application/json",
     )
 
 
 @app.get("/user/<int:user_id>")
 def get_user_inf(user_id):
-    if models.User.is_valid_user_id(user_id):
-        response = USERS[user_id].get_inf()
+    if User.is_valid_user_id(user_id):
+        user = USERS[user_id]
+        response = user.get_inf()
         return Response(
-            json.dumps(response), status=http.HTTPStatus.OK, mimetype="application/json"
+            response=json.dumps(response),
+            status=HTTPStatus.OK,
+            content_type="application/json",
         )
-    return Response(response="Not valid user id.", status=http.HTTPStatus.BAD_REQUEST)
+
+    response_data = {
+        "error": "User not found",
+    }
+    return Response(
+        response=json.dumps(response_data),
+        status=HTTPStatus.NOT_FOUND,
+        content_type="application/json",
+    )
 
 
 @app.get("/user/<int:user_id>/stats")
 def get_users_stats(user_id):
-    if models.User.is_valid_user_id(user_id):
+    if User.is_valid_user_id(user_id):
         user = USERS[user_id]
         fig, ax = plt.subplots()
         column_headers = ["folders", "images", "comments"]
@@ -61,9 +86,15 @@ def get_users_stats(user_id):
         ax.set_ylabel("Count of created objects")
         plt.savefig("app/static/user_stats.png")
         return Response(
-            f"""<img src="{url_for("static",filename="user_stats.png")}">""",
-            status=http.HTTPStatus.OK,
+            response=f"""<img src="{url_for("static",filename="user_stats.png")}">""",
+            status=HTTPStatus.OK,
         )
+
+    response_data = {
+        "error": "User not found",
+    }
     return Response(
-        "Not valid user id.", status=http.HTTPStatus.BAD_REQUEST, mimetype="text/html"
+        response=json.dumps(response_data),
+        status=HTTPStatus.NOT_FOUND,
+        content_type="application/json",
     )
