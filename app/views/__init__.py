@@ -1,1 +1,1 @@
-from app.views import users, folders, images
+from app.views import users, folders, images, comments

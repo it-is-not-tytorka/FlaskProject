@@ -1,12 +1,12 @@
 from app import app, USERS
-from app.models import User, Folder, Photo
+from app.models import User, Folder, Image, Editor
 from flask import request, Response
 from http import HTTPStatus
 import uuid
 import json
 
 
-@app.post("/user/<int:user_id>/image/create")
+@app.post("/user/<int:user_id>/images/create")
 def create_image(user_id):
     data = request.get_json()
     folder_id = data["folder_id"]
@@ -18,35 +18,50 @@ def create_image(user_id):
 
         if Folder.is_valid_folder_id(user_id, folder_id):
             folder = user.folders[folder_id]
-
-            if folder.is_able_to_edit_images():
-                if not folder.is_marked_as_deleted():
-                    photo_id = f"photo-{uuid.uuid4()}"
-                    photo = Photo(photo_id, path, title, user.id)
-                    folder.create_image(photo)
-                    user.increase_image_count()
-                    response = {"folder_id": folder.id, "image_id": photo.id}
+            if not folder.is_deleted:
+                if folder.is_able_to_edit_images():
+                    if isinstance(title, str):
+                        if isinstance(path, str):
+                            image_id = f"image-{uuid.uuid4()}"
+                            image = Image(image_id, path, title, user.id)
+                            folder.create_image(image)
+                            Editor.increase_image_count(user)
+                            response = {"folder_id": folder.id, "image_id": image.id}
+                            return Response(
+                                response=json.dumps(response),
+                                status=HTTPStatus.CREATED,
+                                content_type="application/json",
+                            )
+                        
+                        response_data = {"error": "Image path must be a string."}
+                        return Response(
+                            response=json.dumps(response_data),
+                            status=HTTPStatus.BAD_REQUEST,
+                            content_type="application/json",
+                        )
+                    
+                    response_data = {"error": "Image title must be a string"}
                     return Response(
-                        response=json.dumps(response),
-                        status=HTTPStatus.CREATED,
+                        response=json.dumps(response_data),
+                        status=HTTPStatus.BAD_REQUEST,
                         content_type="application/json",
                     )
-
-                response_data = {"error": "The folder was deleted by it's owner"}
+            
+                response_data = {"error": "Permission denied"}
                 return Response(
                     response=json.dumps(response_data),
-                    status=HTTPStatus.BAD_REQUEST,
+                    status=HTTPStatus.FORBIDDEN,
                     content_type="application/json",
                 )
 
-            response_data = {"error": "Permission denied"}
+            response_data = {"error": "The folder was deleted by it's owner."}
             return Response(
                 response=json.dumps(response_data),
                 status=HTTPStatus.FORBIDDEN,
                 content_type="application/json",
             )
 
-        response_data = {"error": "Invalid folder id"}
+        response_data = {"error": "Invalid folder ID"}
         return Response(
             response=json.dumps(response_data),
             status=HTTPStatus.BAD_REQUEST,
@@ -61,12 +76,12 @@ def create_image(user_id):
     )
 
 
-@app.post("/user/<int:user_id>/folder/comment")
-def add_comment(user_id):
+@app.get("/user/<int:user_id>/images/swap")
+def swap_images(user_id):
     data = request.json
     folder_id = data["folder_id"]
-    image_id = data["image_id"]
-    comment = data["comment"]
+    first_image_id = data["first_image_id"]
+    second_image_id = data["second_image_id"]
 
     if User.is_valid_user_id(user_id):
         user = USERS[user_id]
@@ -74,38 +89,42 @@ def add_comment(user_id):
         if Folder.is_valid_folder_id(user_id, folder_id):
             folder = user.folders[folder_id]
 
-            if not folder.is_marked_as_deleted():
-                if Photo.is_valid_photo_id(folder, image_id):
-                    image = folder.data["images"][image_id]
-                    comment_id = f"comment-{uuid.uuid4()}"
-                    image.add_comment(user, comment, comment_id)
-                    user.increase_comment_count()
-                    response = {
-                        "folder_id": folder.id,
-                        "image_id": image.id,
-                        "comment_id": comment_id,
-                    }
+            if not folder.is_deleted:
+                # Every user can swap images in folder because it doesn't change order for other user's who
+                # have access to this folder.
+                if Image.is_valid_image_id(
+                    folder, first_image_id
+                ) and Image.is_valid_image_id(folder, second_image_id):
+                    swapped_dict = Editor.swap_elements(
+                        first_image_id, second_image_id, folder.images
+                    )
+
+                    if not swapped_dict is None:
+                        folder.images = swapped_dict.copy()
+                        return Response(status=HTTPStatus.NO_CONTENT)
+
+                    response_data = {"error": "Images not found"}
                     return Response(
-                        response=json.dumps(response),
-                        status=HTTPStatus.CREATED,
+                        response=json.dumps(response_data),
+                        status=HTTPStatus.BAD_REQUEST,
                         content_type="application/json",
                     )
 
-                response_data = {"error": "Invalid image id"}
+                response_data = {"error": "Invalid images ID"}
                 return Response(
                     response=json.dumps(response_data),
                     status=HTTPStatus.BAD_REQUEST,
                     content_type="application/json",
                 )
 
-            response_data = {"error": "The folder was deleted by it's owner"}
+            response_data = {"error": "The folder was deleted by it's owner."}
             return Response(
                 response=json.dumps(response_data),
-                status=HTTPStatus.GONE,
+                status=HTTPStatus.FORBIDDEN,
                 content_type="application/json",
             )
 
-        response_data = {"error": "Invalid folder id"}
+        response_data = {"error": "Invalid folder ID"}
         return Response(
             response=json.dumps(response_data),
             status=HTTPStatus.BAD_REQUEST,
@@ -120,7 +139,7 @@ def add_comment(user_id):
     )
 
 
-@app.get("/user/<int:user_id>/folder/delete/image")
+@app.get("/user/<int:user_id>/images/delete")
 def delete_image(user_id):
     data = request.json
     folder_id = data["folder_id"]
@@ -132,84 +151,22 @@ def delete_image(user_id):
             folder = user.folders[folder_id]
 
             if folder.is_able_to_edit_images():
-                if Photo.is_valid_photo_id(folder, image_id):
-                    image = folder.data["images"][image_id]
-                    user_owner_image_id = image.data["user_id"]
+                if not folder.is_deleted:
+                    if Image.is_valid_image_id(folder, image_id):
+                        image = folder.images[image_id]
+                        Editor.recalculate_counts_image(image)
+                        folder.delete_image(image)
 
-                    if User.is_valid_user_id(user_owner_image_id):
-                        user_owner_image = USERS[user_owner_image_id]
-                        user_owner_image.decrease_image_count()
+                        return Response(status=HTTPStatus.NO_CONTENT)
 
-                    folder.delete_image(image_id)
-                    return Response(status=HTTPStatus.NO_CONTENT)
-
-                response_data = {"error": "Invalid image id"}
-                return Response(
-                    response=json.dumps(response_data),
-                    status=HTTPStatus.BAD_REQUEST,
-                    content_type="application/json",
-                )
-
-            response_data = {"error": "Permission denied"}
-            return Response(
-                response=json.dumps(response_data),
-                status=HTTPStatus.FORBIDDEN,
-                content_type="application/json",
-            )
-
-        response_data = {"error": "Invalid folder id"}
-        return Response(
-            response=json.dumps(response_data),
-            status=HTTPStatus.BAD_REQUEST,
-            content_type="application/json",
-        )
-
-    response_data = {"error": "User not found"}
-    return Response(
-        response=json.dumps(response_data),
-        status=HTTPStatus.NOT_FOUND,
-        content_type="application/json",
-    )
-
-
-@app.get("/user/<int:user_id>/delete/comment")
-def delete_comment(user_id):
-    data = request.json
-    folder_id = data["folder_id"]
-    image_id = data["image_id"]
-    comment_id = data["comment_id"]
-
-    if User.is_valid_user_id(user_id):
-        user = USERS[user_id]
-
-        if Folder.is_valid_folder_id(user_id, folder_id):
-            folder = user.folders[folder_id]
-
-            if folder.is_able_to_edit_images():
-                if Photo.is_valid_photo_id(folder, image_id):
-                    image = folder.data["images"][image_id]
-                    comment_data = image.data["comments"][comment_id]
-                    user_owner_comment_id = comment_data["user_id"]
-
-                    if image.is_valid_comment_id(comment_id):
-                        image.delete_comment(comment_id)
-
-                        if User.is_valid_user_id(user_owner_comment_id):
-                            user_owner_comment = USERS[user_owner_comment_id]
-                            user_owner_comment.decrease_comment_count()
-
-                        return Response(
-                            status=HTTPStatus.NO_CONTENT,
-                        )
-
-                    response_data = {"error": "Invalid comment id"}
+                    response_data = {"error": "Invalid image ID"}
                     return Response(
                         response=json.dumps(response_data),
                         status=HTTPStatus.BAD_REQUEST,
                         content_type="application/json",
                     )
 
-                response_data = {"error": "Invalid image id"}
+                response_data = {"error": "The folder was delete by it's owner"}
                 return Response(
                     response=json.dumps(response_data),
                     status=HTTPStatus.BAD_REQUEST,
@@ -223,7 +180,7 @@ def delete_comment(user_id):
                 content_type="application/json",
             )
 
-        response_data = {"error": "Invalid folder id"}
+        response_data = {"error": "Invalid folder ID"}
         return Response(
             response=json.dumps(response_data),
             status=HTTPStatus.BAD_REQUEST,

@@ -9,24 +9,20 @@ from http import HTTPStatus
 @app.post("/user/create")
 def user_create():
     data = request.get_json()
-    first_name = data["first_name"]
-    last_name = data["last_name"]
-    phone = data["phone"]
-    email = data["email"]
-    id = len(USERS)
+    user_first_name = data["first_name"]
+    user_last_name = data["last_name"]
+    user_phone = data["phone"]
+    user_email = data["email"]
+    user_id = len(USERS)
 
     # check if phone number and email are valid
-    if User.is_valid_phone(phone_numb=phone) and User.is_valid_email(email=email):
+    if User.is_valid_phone(user_phone) and User.is_valid_email(user_email):
+        # chack if user's params are unique
         if User.is_unique_params(data, "phone", "email"):
-            user = User(first_name, last_name, phone, email, id)
-            user_data = {
-                "first_name": user.first_name,
-                "last_name": user.last_name,
-                "phone": user.phone,
-                "email": user.email,
-                "id": user.id,
-                "folders": user.folders,
-            }
+            user = User(
+                user_first_name, user_last_name, user_phone, user_email, user_id
+            )
+            user_data = user.get_info()
             USERS.append(user)
             return Response(
                 response=json.dumps(user_data),
@@ -53,11 +49,11 @@ def user_create():
     )
 
 
-@app.get("/user/<int:user_id>")
-def get_user_inf(user_id):
+@app.get("/user/<int:user_id>/info")
+def get_user_info(user_id):
     if User.is_valid_user_id(user_id):
         user = USERS[user_id]
-        response = user.get_inf()
+        response = user.get_info()
         return Response(
             response=json.dumps(response),
             status=HTTPStatus.OK,
