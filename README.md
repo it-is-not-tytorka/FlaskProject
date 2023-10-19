@@ -246,7 +246,7 @@ Request example:
 Возвращает информацию о папке и вызывает метод `to_dict` у экземпляров класса `Images`, которые находятся в папке. В случае, если папка была удалена возвращается ошибка в стиле json:
 ```json
 {
-    "folder_id": folder's ID,
+    "folder_id": "string",
     "error": "The folder was deleted by it's owner."
 }
 ```
