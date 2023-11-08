@@ -1,7 +1,6 @@
 from http import HTTPStatus
 from faker import Faker
 import requests
-from icecream import ic
 
 fake = Faker()
 
@@ -37,9 +36,9 @@ def test_create_folder():
     create_folder_response = requests.post(f"{ENDPOINT}/user/{user_id}/folders/create", json=create_folder_payload)
     assert create_folder_response.status_code == HTTPStatus.CREATED
     folder_id = create_folder_response.json()["folder_id"]
-    get_user_response = requests.get(f"{ENDPOINT}/user/{user_id}/info")
 
     # check that user has a created folder
+    get_user_response = requests.get(f"{ENDPOINT}/user/{user_id}/info")
     assert get_user_response.status_code == HTTPStatus.OK
     get_user_data = get_user_response.json()
     assert len(get_user_data["folders"]) == 1
