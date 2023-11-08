@@ -1,7 +1,6 @@
 from http import HTTPStatus
 from faker import Faker
 import requests
-from icecream import ic
 
 fake = Faker()
 
@@ -10,12 +9,12 @@ ENDPOINT = "http://127.0.0.1:5000"
 
 def create_user_payload():
     random_first_name = fake.first_name()
-    last_name = fake.last_name()
+    random_last_name = fake.last_name()
     random_phone_number = fake.numerify("+7##########")
     random_email = fake.email()
     return {
         "first_name": random_first_name,
-        "last_name": last_name,
+        "last_name": random_last_name,
         "phone": random_phone_number,
         "email": random_email
     }
@@ -45,11 +44,15 @@ def test_user_create():
     assert get_response.status_code == HTTPStatus.OK
 
     # check response and payload are the same
-    got_user_info = get_response.json()
-    assert got_user_info["first_name"] == payload["first_name"]
-    assert got_user_info["last_name"] == payload["last_name"]
-    assert got_user_info["phone"] == payload["phone"]
-    assert got_user_info["email"] == payload["email"]
+    get_user_info = get_response.json()
+    assert get_user_info["first_name"] == payload["first_name"]
+    assert get_user_info["last_name"] == payload["last_name"]
+    assert get_user_info["phone"] == payload["phone"]
+    assert get_user_info["email"] == payload["email"]
+    assert get_user_info["folder_count"] == 0
+    assert get_user_info["image_count"] == 0
+    assert get_user_info["comment_count"] == 0
+    assert get_user_info["folders"] == []
 
     # deleting created user
     delete_response = requests.delete(f"{ENDPOINT}/user/{user_id}/delete")
@@ -61,14 +64,14 @@ def test_user_crete_with_wrong_data():
 
     Check creating user with invalid phone number or email
     """
-    # create payload and spoilt email
+    # create payload and spoilt email by deleting @
     payload = create_user_payload()
     payload["email"] = payload["email"].replace("@", "")
 
     create_response = requests.post(f"{ENDPOINT}/user/create", json=payload)
     assert create_response.status_code == HTTPStatus.BAD_REQUEST
 
-    # create payload and spoilt phone number
+    # create payload and spoilt phone number by adding 000 in the beginning
     payload = create_user_payload()
     payload["phone"] = "000" + payload["phone"]
 
@@ -76,6 +79,13 @@ def test_user_crete_with_wrong_data():
     assert create_response.status_code == HTTPStatus.BAD_REQUEST
 
 
-def test_get_uset_stats():
-    # todo: release this test
-    ...
+def test_get_user_stats():
+    payload = create_user_payload()
+    create_response = requests.post(f"{ENDPOINT}/user/create", json=payload)
+    assert create_response.status_code == HTTPStatus.CREATED
+
+    user_data = create_response.json()
+
+    get_response = requests.get(f"{ENDPOINT}/user/{user_data["id"]}/stats")
+    assert get_response.status_code == HTTPStatus.OK
+    assert get_response.content == b'<img src="/static/user_stats.png">'

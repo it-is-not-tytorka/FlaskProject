@@ -85,7 +85,7 @@ def swap_folders(user_id):
     )
 
 
-@app.get("/user/<int:user_id>/folders/delete")
+@app.delete("/user/<int:user_id>/folders/delete") # todo: method was changed to DELETE. redo README
 def delete_folder(user_id):
     data = request.json
     folder_id = data["folder_id"]
@@ -205,7 +205,7 @@ def unshare_folder(user_id):
                 # Only owner of a folder can remove folder access.
                 if not isinstance(folder, SharedFolder):
                     user_to_remove.delete_folder(folder_id)
-                    return Response(HTTPStatus.NO_CONTENT)
+                    return Response(status=HTTPStatus.NO_CONTENT)
 
                 response_data = {"error": "Permission denied"}
                 return Response(
