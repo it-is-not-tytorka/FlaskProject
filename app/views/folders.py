@@ -85,7 +85,7 @@ def swap_folders(user_id):
     )
 
 
-@app.delete("/user/<int:user_id>/folders/delete") # todo: method was changed to DELETE. redo README
+@app.delete("/user/<int:user_id>/folders/delete")
 def delete_folder(user_id):
     data = request.json
     folder_id = data["folder_id"]

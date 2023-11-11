@@ -1,5 +1,8 @@
 import re
 from app import USERS
+import matplotlib
+
+matplotlib.use("agg")
 
 
 class User:
@@ -62,7 +65,11 @@ class User:
 
     @staticmethod
     def is_valid_user_id(user_id: int) -> bool:
-        return isinstance(user_id, int) and user_id in USERS and USERS[user_id].status != "deleted"
+        return (
+            isinstance(user_id, int)
+            and user_id in USERS
+            and USERS[user_id].status != "deleted"
+        )
 
     @staticmethod
     def share_folder(user_to_receive, folder) -> None:
@@ -132,7 +139,7 @@ class SharedFolder(Folder):
     @property
     def is_deleted(self):
         return self.main_folder.is_deleted
-    
+
     def create_image(self, image) -> None:
         self.main_folder.images[image.id] = image
 
@@ -189,7 +196,9 @@ class Comment:
 
 class Editor:
     @staticmethod
-    def swap_elements(first_el_id: int, second_el_id: int, old_dict: dict) -> dict:
+    def swap_elements(
+        first_el_id: int, second_el_id: int, old_dict: dict
+    ) -> dict | None:
         new_dict = {}
         try:
             data_first_el = old_dict[first_el_id]

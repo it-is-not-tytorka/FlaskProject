@@ -102,18 +102,17 @@ def delete_user(user_id):
         user = USERS[user_id]
         USERS[user_id].status = "deleted"
         # get list of folders where user is an owner
-        owned_folders = list(filter(lambda fldr: fldr.users[user_id] == "owner", user.folders.values()))
+        owned_folders = list(
+            filter(lambda fldr: fldr.users[user_id] == "owner", user.folders.values())
+        )
         for folder in owned_folders:
             user.delete_folder(folder.id)
 
         return Response(status=HTTPStatus.NO_CONTENT)
 
-    response_data = {
-        "error": "Not valid user id"
-    }
+    response_data = {"error": "Not valid user id"}
     return Response(
         response=json.dumps(response_data),
         status=HTTPStatus.BAD_REQUEST,
         content_type="application/json",
     )
-

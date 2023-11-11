@@ -29,7 +29,7 @@ def test_user_create():
     payload = create_user_payload()
 
     create_response = requests.post(f"{ENDPOINT}/user/create", json=payload)
-    assert create_response.status_code == HTTPStatus.CREATED, "Wrong payload data"
+    assert create_response.status_code == HTTPStatus.CREATED, create_response.content
 
     user_data = create_response.json()
     # check user data and payload are both the same
@@ -41,7 +41,7 @@ def test_user_create():
     # check route /user/<int:user_id>/info
     user_id = user_data["id"]
     get_response = requests.get(f"{ENDPOINT}/user/{user_id}/info")
-    assert get_response.status_code == HTTPStatus.OK
+    assert get_response.status_code == HTTPStatus.OK, get_response.content
 
     # check response and payload are the same
     get_user_info = get_response.json()
@@ -56,7 +56,7 @@ def test_user_create():
 
     # deleting created user
     delete_response = requests.delete(f"{ENDPOINT}/user/{user_id}/delete")
-    assert delete_response.status_code == HTTPStatus.NO_CONTENT
+    assert delete_response.status_code == HTTPStatus.NO_CONTENT, delete_response.content
 
 
 def test_user_crete_with_wrong_data():
@@ -69,23 +69,24 @@ def test_user_crete_with_wrong_data():
     payload["email"] = payload["email"].replace("@", "")
 
     create_response = requests.post(f"{ENDPOINT}/user/create", json=payload)
-    assert create_response.status_code == HTTPStatus.BAD_REQUEST
+    assert create_response.status_code == HTTPStatus.BAD_REQUEST, create_response.content
 
     # create payload and spoilt phone number by adding 000 in the beginning
     payload = create_user_payload()
     payload["phone"] = "000" + payload["phone"]
 
     create_response = requests.post(f"{ENDPOINT}/user/create", json=payload)
-    assert create_response.status_code == HTTPStatus.BAD_REQUEST
+    assert create_response.status_code == HTTPStatus.BAD_REQUEST, create_response.content
 
 
 def test_get_user_stats():
+    """TEST A ROUTE GET user/<user_id:int>/stats"""
     payload = create_user_payload()
     create_response = requests.post(f"{ENDPOINT}/user/create", json=payload)
-    assert create_response.status_code == HTTPStatus.CREATED
+    assert create_response.status_code == HTTPStatus.CREATED, create_response.content
 
     user_data = create_response.json()
 
     get_response = requests.get(f"{ENDPOINT}/user/{user_data["id"]}/stats")
-    assert get_response.status_code == HTTPStatus.OK
+    assert get_response.status_code == HTTPStatus.OK, get_response.content
     assert get_response.content == b'<img src="/static/user_stats.png">'
