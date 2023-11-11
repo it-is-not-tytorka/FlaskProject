@@ -32,21 +32,21 @@ def create_image(user_id):
                                 status=HTTPStatus.CREATED,
                                 content_type="application/json",
                             )
-                        
+
                         response_data = {"error": "Image path must be a string."}
                         return Response(
                             response=json.dumps(response_data),
                             status=HTTPStatus.BAD_REQUEST,
                             content_type="application/json",
                         )
-                    
+
                     response_data = {"error": "Image title must be a string"}
                     return Response(
                         response=json.dumps(response_data),
                         status=HTTPStatus.BAD_REQUEST,
                         content_type="application/json",
                     )
-            
+
                 response_data = {"error": "Permission denied"}
                 return Response(
                     response=json.dumps(response_data),
@@ -90,7 +90,7 @@ def swap_images(user_id):
             folder = user.folders[folder_id]
 
             if not folder.is_deleted:
-                # Every user can swap images in folder because it doesn't change order for other user's who
+                # Every user can swap images in folder because it doesn't change order for other users who
                 # have access to this folder.
                 if Image.is_valid_image_id(
                     folder, first_image_id
@@ -99,7 +99,7 @@ def swap_images(user_id):
                         first_image_id, second_image_id, folder.images
                     )
 
-                    if not swapped_dict is None:
+                    if swapped_dict is not None:
                         folder.images = swapped_dict.copy()
                         return Response(status=HTTPStatus.NO_CONTENT)
 
@@ -139,7 +139,7 @@ def swap_images(user_id):
     )
 
 
-@app.get("/user/<int:user_id>/images/delete")
+@app.delete("/user/<int:user_id>/images/delete")
 def delete_image(user_id):
     data = request.json
     folder_id = data["folder_id"]

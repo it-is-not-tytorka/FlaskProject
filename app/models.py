@@ -1,5 +1,8 @@
 import re
 from app import USERS
+import matplotlib
+
+matplotlib.use("agg")
 
 
 class User:
@@ -14,6 +17,7 @@ class User:
         self.folders = {}
         self.image_count = 0
         self.comment_count = 0
+        self.status = "created"
 
     def get_info(self) -> dict:
         return {
@@ -44,21 +48,28 @@ class User:
         return (
             len(email) > 7
             and re.match(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,7}\b", email)
-            != None
+            is not None
         )
 
     @staticmethod
     def is_unique_params(data: dict, *args) -> bool:
         try:
-            return all(
-                data[arg] != getattr(user, arg) for arg in args for user in USERS
-            )
+            is_unique = True
+            for user in USERS.values():
+                if user.status != "deleted":
+                    if any(getattr(user, arg) == data[arg] for arg in args):
+                        is_unique = False
+            return is_unique
         except AttributeError:
             return False
 
     @staticmethod
     def is_valid_user_id(user_id: int) -> bool:
-        return isinstance(user_id, int) and 0 <= user_id < len(USERS)
+        return (
+            isinstance(user_id, int)
+            and user_id in USERS
+            and USERS[user_id].status != "deleted"
+        )
 
     @staticmethod
     def share_folder(user_to_receive, folder) -> None:
@@ -128,7 +139,7 @@ class SharedFolder(Folder):
     @property
     def is_deleted(self):
         return self.main_folder.is_deleted
-    
+
     def create_image(self, image) -> None:
         self.main_folder.images[image.id] = image
 
@@ -142,7 +153,7 @@ class Image:
         self.user_id = user_id
 
     @staticmethod
-    def is_valid_image_id(folder: Folder, image_id: int) -> None:
+    def is_valid_image_id(folder: Folder, image_id: int) -> bool:
         return isinstance(image_id, str) and image_id in folder.images
 
     def add_comment(self, comment) -> None:
@@ -185,7 +196,9 @@ class Comment:
 
 class Editor:
     @staticmethod
-    def swap_elements(first_el_id: int, second_el_id: int, old_dict: dict) -> dict:
+    def swap_elements(
+        first_el_id: int, second_el_id: int, old_dict: dict
+    ) -> dict | None:
         new_dict = {}
         try:
             data_first_el = old_dict[first_el_id]

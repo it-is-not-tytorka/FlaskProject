@@ -17,13 +17,13 @@ def user_create():
 
     # check if phone number and email are valid
     if User.is_valid_phone(user_phone) and User.is_valid_email(user_email):
-        # chack if user's params are unique
+        # check if user's params are unique
         if User.is_unique_params(data, "phone", "email"):
             user = User(
                 user_first_name, user_last_name, user_phone, user_email, user_id
             )
             user_data = user.get_info()
-            USERS.append(user)
+            USERS[user_id] = user
             return Response(
                 response=json.dumps(user_data),
                 status=HTTPStatus.CREATED,
@@ -92,5 +92,27 @@ def get_users_stats(user_id):
     return Response(
         response=json.dumps(response_data),
         status=HTTPStatus.NOT_FOUND,
+        content_type="application/json",
+    )
+
+
+@app.delete("/user/<int:user_id>/delete")
+def delete_user(user_id):
+    if User.is_valid_user_id(user_id):
+        user = USERS[user_id]
+        USERS[user_id].status = "deleted"
+        # get list of folders where user is an owner
+        owned_folders = list(
+            filter(lambda fldr: fldr.users[user_id] == "owner", user.folders.values())
+        )
+        for folder in owned_folders:
+            user.delete_folder(folder.id)
+
+        return Response(status=HTTPStatus.NO_CONTENT)
+
+    response_data = {"error": "Not valid user id"}
+    return Response(
+        response=json.dumps(response_data),
+        status=HTTPStatus.BAD_REQUEST,
         content_type="application/json",
     )
